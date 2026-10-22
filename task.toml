@@ -1,0 +1,27 @@
+schema_version = "1.3"
+
+[task]
+name = "local/ct-recon-recheck"
+description = "工业 CT 平行束重建的定标修正、失效道修复与缺陷复核"
+authors = [{ name = "shuai" }]
+keywords = ["python", "工业CT", "滤波反投影", "射线衰减"]
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+build_timeout_sec = 900
+cpus = 1
+memory_mb = 2048
+storage_mb = 4096
+gpus = 0
+allow_internet = true
+
+[verifier]
+timeout_sec = 300
+
+[metadata]
+difficulty = "hard"
+category = "物理模拟"
+tags = ["python", "ct-reconstruction", "filtered-backprojection", "x-ray-attenuation"]
+expert_time_estimate = "3h"
