@@ -4,6 +4,16 @@
 import json
 import math
 
+# 多能谱前向：透射率 T = Σ w_k·exp(-f_k·P)，P 是 70 keV 下的线积分（µ70·长度）
+# f_k 是同一材料在 E_k 下相对 70 keV 的衰减比；材料卡里带能谱与 f，各材料共用同一条能量依赖
+SPECTRUM = [(70.0, 0.60, 1.00), (90.0, 0.30, 0.71), (110.0, 0.10, 0.55)]
+REF_ENERGY = 70.0
+
+
+def transmission(p):
+    return sum(w * math.exp(-f * p) for _kev, w, f in SPECTRUM)
+
+
 DEFAULT_PHANTOM = [
     {"x": 0.0, "y": 0.0, "r": 60.0, "mu": 0.50},
     {"x": -20.0, "y": 15.0, "r": 22.0, "mu": 0.62},
@@ -50,7 +60,7 @@ def make_scan(phantom=None, size=80, px=2.0, channels=121, pitch=2.0, n_angles=1
         for k in range(channels):
             s = s0 + k * pitch
             p = line_integral(phantom, s - center_offset_mm, angles[a])
-            cnt = int(round(i0a * math.exp(-p) + dark))
+            cnt = int(round(i0a * transmission(p) + dark))
             if k in bad_channels or k in silent_dead:
                 cnt = 0
             row.append(cnt)
@@ -73,7 +83,11 @@ def make_scan(phantom=None, size=80, px=2.0, channels=121, pitch=2.0, n_angles=1
             "min_defect_area_mm2": min_area,
         },
         "rois": rois,
-        "material_card": {"matrix_mu_per_cm": matrix_mu if matrix_mu is not None else phantom[0]["mu"]},
+        "material_card": {
+            "reference_energy_kev": REF_ENERGY,
+            "matrix_mu_per_cm": matrix_mu if matrix_mu is not None else phantom[0]["mu"],
+            "spectrum": [{"kev": kev, "weight": w, "mu_relative": f} for kev, w, f in SPECTRUM],
+        },
         "detector": {"bad_channels": sorted(set(bad_channels))},
     }
 

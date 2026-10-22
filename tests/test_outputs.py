@@ -30,6 +30,15 @@ WEIGHTS = {
     "test_failed_run_keeps_previous_report": 0.05,             # 失败不污染旧报告
 }
 
+# 多能谱：材料卡给能谱与相对衰减比，透射率 T = Σ w·exp(-f·P)，P 是 70 keV 下的线积分
+SPECTRUM = [(70.0, 0.60, 1.00), (90.0, 0.30, 0.71), (110.0, 0.10, 0.55)]
+REF_ENERGY = 70.0
+
+
+def _transmission(p):
+    return sum(w * math.exp(-f * p) for _k, w, f in SPECTRUM)
+
+
 BASE_PHANTOM = [
     {"x": 0.0, "y": 0.0, "r": 60.0, "mu": 0.50},
     {"x": -20.0, "y": 15.0, "r": 22.0, "mu": 0.62},
@@ -81,8 +90,8 @@ def make_scan(phantom, rois, size=80, px=2.0, channels=121, pitch=2.0, n_angles=
         per_angle.append(round(i0a, 6))
         row = []
         for k in range(channels):
-            cnt = int(round(i0a * math.exp(-_line_integral(phantom, s0 + k * pitch - center_offset,
-                                                          angles[a])) + dark))
+            depth = _line_integral(phantom, s0 + k * pitch - center_offset, angles[a])
+            cnt = int(round(i0a * _transmission(depth) + dark))
             if k in bad or k in silent:
                 cnt = 0
             row.append(cnt)
@@ -98,7 +107,11 @@ def make_scan(phantom, rois, size=80, px=2.0, channels=121, pitch=2.0, n_angles=
             "min_defect_area_mm2": 30.0,
         },
         "rois": [{"name": r["name"], "x_mm": r["x_mm"], "y_mm": r["y_mm"], "r_mm": r["r_mm"]} for r in rois],
-        "material_card": {"matrix_mu_per_cm": phantom[0]["mu"]},
+        "material_card": {
+            "reference_energy_kev": REF_ENERGY,
+            "matrix_mu_per_cm": phantom[0]["mu"],
+            "spectrum": [{"kev": kev, "weight": w, "mu_relative": f} for kev, w, f in SPECTRUM],
+        },
         "detector": {"bad_channels": sorted(set(bad))},
     }
 
@@ -150,7 +163,8 @@ def _roi_ok(report, rois):
 def test_roi_mu_matches_phantom_on_base_scan():
     """题面原文：「roi 按扫描卡里 rois 的顺序输出」「按 rois 里给的采区计算平均 µ」。
 
-    基体与夹杂按相对误差 4% 卡，空洞按绝对误差 0.008 /cm 卡。
+    基体与夹杂按相对误差 4% 卡，空洞按绝对误差 0.008 /cm 卡。数据是多能谱的，
+    不做线性化时这条路会整体偏低约两成。
     """
     report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40, 41, 118), silent=(77,), center_offset=-3.4))
     return _roi_ok(report, BASE_ROIS)

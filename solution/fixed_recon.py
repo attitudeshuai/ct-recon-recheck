@@ -6,7 +6,8 @@
     python3 src/recon.py --scan data/scan.json --out out/report.json
 
 口径：
-  · 计数 → 线积分要扣暗电流、按每角度源强归一：p = -ln((I - dark) / (I0(θ) - dark))；
+  · 计数 → 透射率要先扣暗电流、按每角度源强归一，再用材料卡的能谱做多能谱线性化反演：
+    T = (I - dark)/(I0(θ) - dark)，T = Σ w_k·exp(-f_k·P)，反解出 70 keV 下的线积分 P；
   · 滤波反投影：Ram-Lak 核，反投影权重 2·Δθ（均匀圆盘定标，见 solution/README.md）；
   · 重建值是线性衰减系数 µ（1/cm），基体标称值见材料卡；
   · 缺陷 = 检视半径内 µ 低于阈值的连通块（8 邻接），面积按 mm² 报；
@@ -133,6 +134,26 @@ def load_scan(path):
             _fail("rois[%d].r_mm 必须为正" % i)
         clean_rois.append({"name": name, "x_mm": cx, "y_mm": cy, "r_mm": rr})
 
+    card = _get(raw, "material_card", dict, "scan")
+    spectrum_raw = _get(card, "spectrum", list, "material_card")
+    if len(spectrum_raw) < 2:
+        _fail("material_card.spectrum 至少要两个能量点")
+    spectrum = []
+    for i, item in enumerate(spectrum_raw):
+        if not isinstance(item, dict):
+            _fail("material_card.spectrum[%d] 不是对象" % i)
+        kev = _get(item, "kev", float, "spectrum[%d]" % i)
+        weight = _get(item, "weight", float, "spectrum[%d]" % i)
+        rel = _get(item, "mu_relative", float, "spectrum[%d]" % i)
+        if kev <= 0 or weight <= 0 or rel <= 0:
+            _fail("material_card.spectrum[%d] 的 kev/weight/mu_relative 都要为正" % i)
+        spectrum.append((kev, weight, rel))
+    if abs(sum(w for _k, w, _f in spectrum) - 1.0) > 0.05:
+        _fail("material_card.spectrum 的权重和应接近 1")
+    ref_kev = _get(card, "reference_energy_kev", float, "material_card")
+    if ref_kev <= 0:
+        _fail("material_card.reference_energy_kev 必须为正")
+
     detector = raw.get("detector") or {}
     bad = detector.get("bad_channels") or []
     clean_bad = []
@@ -148,7 +169,39 @@ def load_scan(path):
         "counts": [[float(v) for v in row] for row in counts],
         "inspect_r": r_insp, "thr": thr, "min_area": min_area,
         "rois": clean_rois, "bad": sorted(set(clean_bad)),
+        "spectrum": spectrum, "ref_kev": ref_kev,
     }
+
+
+# ---------------------------------------------------------------- 多能谱线性化
+def _transmission_of_p(spectrum, p):
+    return sum(w * math.exp(-f * p) for _kev, w, f in spectrum)
+
+
+def build_inverse(spectrum, p_max=40.0, n=20001):
+    """建 P ↔ T 的单调表；T 随 P 递减，反解用二分 + 线性插值。"""
+    ps = [p_max * i / (n - 1) for i in range(n)]
+    ts = [_transmission_of_p(spectrum, v) for v in ps]
+    return ps, ts
+
+
+def optical_depth(ts, ps, t):
+    """由透射率反解 70 keV 线积分：单能假设下这是一条过原点的直线，多能谱下是条曲线。"""
+    if t >= ts[0]:
+        return 0.0
+    if t <= ts[-1]:
+        return ps[-1]
+    lo, hi = 0, len(ts) - 1
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        if ts[mid] > t:
+            lo = mid
+        else:
+            hi = mid
+    t0, t1 = ts[lo], ts[hi]
+    if t0 == t1:
+        return ps[lo]
+    return ps[lo] + (t0 - t) / (t0 - t1) * (ps[hi] - ps[lo])
 
 
 # ---------------------------------------------------------------- 投影 → 线积分
@@ -156,6 +209,7 @@ def to_line_integrals(scan):
     """扣暗电流、按每角度源强归一，得到线积分；坏道（含自检漏报的零计数道）用两侧好道插值。"""
     dark = scan["dark"]
     n_ch = scan["n_ch"]
+    ps, ts = build_inverse(scan["spectrum"])
     p, repaired = [], set()
     for a, row in enumerate(scan["counts"]):
         i0 = scan["per_angle"][a]
@@ -166,7 +220,7 @@ def to_line_integrals(scan):
                 line.append(None)
                 repaired.add(k)
                 continue
-            line.append(-math.log(denom / (i0 - dark)))
+            line.append(optical_depth(ts, ps, min(1.0, denom / (i0 - dark))))
         p.append(line)
     repaired |= set(scan["bad"])
     for k in scan["bad"]:
