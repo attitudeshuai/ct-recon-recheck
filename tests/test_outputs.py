@@ -125,7 +125,7 @@ def _roi_values(report):
 
 # ---------------------------------------------------------------- 测试
 def test_roi_mu_matches_phantom_on_base_scan():
-    """题面原文：「报告里每个采区给出该区的平均线性衰减系数 µ，单位 1/cm」。
+    """题面原文：按 rois 里给的采区平均 µ 计算，mu_per_cm 保留三位小数。
 
     基体与夹杂按相对 2% 卡，空洞按绝对 0.005 /cm 卡。
     """
@@ -276,7 +276,7 @@ def test_invalid_scan_rejected_without_output():
 
 
 def test_report_schema_and_rounding():
-    """题面原文：「报告按固定结构输出，mu_per_cm 保留三位小数」。
+    """题面原文：报告是一个 UTF-8 编码的 JSON 对象，结构固定；mu_per_cm 保留三位小数。
 
     校验顶层键、采区顺序、位数、meta 计数与 JSON 合法性。
     """
@@ -285,7 +285,7 @@ def test_report_schema_and_rounding():
     assert isinstance(report, dict)
     assert set(report) == {"geometry", "roi", "defects", "meta"}, "顶层键不对：%r" % (set(report),)
     assert report["geometry"]["image_size"] == 80
-    assert float(report["geometry"]["pixel_size_mm"]) == 2.0
+    assert abs(float(report["geometry"]["pixel_size_mm"]) - 2.0) <= 1e-9, "像素尺寸不是 2.0"
     assert [r["name"] for r in report["roi"]] == [r["name"] for r in BASE_ROIS], "采区顺序不对"
     for r in report["roi"]:
         mu = float(r["mu_per_cm"])

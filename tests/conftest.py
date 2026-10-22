@@ -32,10 +32,15 @@ def pytest_runtest_logreport(report):
 
 
 def pytest_sessionfinish(session, exitstatus):
+    # 完成报告校验：必须有每一条测试的结果，缺任何一条都按 INCOMPLETE 记 0
+    missing = [n for n in WEIGHTS if n not in _RESULTS]
     total = 0.0
-    for name, weight in WEIGHTS.items():
-        if _RESULTS.get(name) is True:
-            total += weight
+    if missing:
+        print("[INCOMPLETE] 这些测试没有跑完：%s；reward 记 0" % ", ".join(missing))
+    else:
+        for name, weight in WEIGHTS.items():
+            if _RESULTS.get(name) is True:
+                total += weight
     path = os.environ.get("CT_REWARD_PATH", "/logs/verifier/reward.txt")
     out_dir = os.path.dirname(os.path.abspath(path))
     if out_dir:

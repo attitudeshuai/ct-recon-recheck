@@ -15,7 +15,12 @@ cd /app
 pip install --no-index --find-links /tests/wheels --quiet pytest > /logs/verifier/pip.log 2>&1 || true
 
 timeout 240 python3 -m pytest /tests -q -p no:cacheprovider -o addopts="" \
-    > /logs/verifier/pytest.log 2>&1 || true
+    --junitxml=/logs/verifier/pytest.xml > /logs/verifier/pytest.log 2>&1 || true
+
+# 完成报告校验：没有结构化结果（pytest 没跑起来 / 被跳过）就按 INCOMPLETE 记 0
+if [ ! -s /logs/verifier/pytest.xml ]; then
+  echo 0 > /logs/verifier/reward.txt
+fi
 
 DONE=1
 chmod 0444 /logs/verifier/reward.txt 2>/dev/null || true
