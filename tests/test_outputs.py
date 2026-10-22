@@ -50,14 +50,14 @@ SECOND_PHANTOM = [
     {"x": -30.0, "y": -20.0, "r": 7.0, "mu": 0.15},
 ]
 BASE_ROIS = [
-    {"name": "matrix", "x_mm": 0.0, "y_mm": -35.0, "r_mm": 8.0, "mu": 0.50, "rel": 0.04},
-    {"name": "insert", "x_mm": -20.0, "y_mm": 15.0, "r_mm": 8.0, "mu": 0.62, "rel": 0.04},
-    {"name": "void", "x_mm": 25.0, "y_mm": -10.0, "r_mm": 3.0, "mu": 0.05, "abs": 0.008},
+    {"name": "matrix", "x_mm": 0.0, "y_mm": -35.0, "r_mm": 8.0, "mu": 0.50, "rel": 0.02},
+    {"name": "insert", "x_mm": -20.0, "y_mm": 15.0, "r_mm": 8.0, "mu": 0.62, "rel": 0.02},
+    {"name": "void", "x_mm": 25.0, "y_mm": -10.0, "r_mm": 3.0, "mu": 0.05, "abs": 0.005},
 ]
 SECOND_ROIS = [
-    {"name": "matrix", "x_mm": 0.0, "y_mm": -30.0, "r_mm": 7.0, "mu": 0.44, "rel": 0.04},
-    {"name": "insert", "x_mm": 15.0, "y_mm": 25.0, "r_mm": 6.0, "mu": 0.60, "rel": 0.04},
-    {"name": "void", "x_mm": -30.0, "y_mm": -20.0, "r_mm": 2.5, "mu": 0.15, "abs": 0.012},
+    {"name": "matrix", "x_mm": 0.0, "y_mm": -30.0, "r_mm": 7.0, "mu": 0.44, "rel": 0.02},
+    {"name": "insert", "x_mm": 15.0, "y_mm": 25.0, "r_mm": 6.0, "mu": 0.60, "rel": 0.02},
+    {"name": "void", "x_mm": -30.0, "y_mm": -20.0, "r_mm": 2.5, "mu": 0.15, "abs": 0.005},
 ]
 
 
@@ -163,7 +163,7 @@ def _roi_ok(report, rois):
 def test_roi_mu_matches_phantom_on_base_scan():
     """题面原文：「roi 按扫描卡里 rois 的顺序输出」「按 rois 里给的采区计算平均 µ」。
 
-    基体与夹杂按相对误差 4% 卡，空洞按绝对误差 0.008 /cm 卡。数据是多能谱的，
+    基体与夹杂按相对误差 2% 卡，空洞按绝对误差 0.005 /cm 卡。数据是多能谱的，
     不做线性化时这条路会整体偏低约两成。
     """
     report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40, 41, 118), silent=(77,), center_offset=-3.4))
@@ -183,7 +183,7 @@ def test_roi_mu_matches_second_phantom_geometry():
 def test_dark_current_large_offset_recovered():
     """题面原文：「计数按 I = I0(θ)·exp(-∫µ dl) + 暗电流 采集」。
 
-    暗电流抬到源强的百分之四后，不扣暗电流的实现采区会明显偏低；采区仍须落在 4% 容差内。
+    暗电流抬到源强的百分之四后，不扣暗电流的实现采区会明显偏低；采区仍须落在 2% 容差内。
     """
     report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, dark=800.0, bad=(40,), silent=(77,), center_offset=-3.4))
     return _roi_ok(report, BASE_ROIS)
@@ -201,7 +201,7 @@ def test_dead_channel_recovery_with_unlisted_zero():
 def test_defect_area_and_center_match_phantom():
     """题面原文：「defects 是检视范围内 µ 低于阈值的连通块」「面积按 mm² 计」「按面积从大到小排列」。
 
-    体模里只有一个 9 mm 半径的空洞：恰好检出 1 个，质心偏差不超过 3 mm，面积在真值 ±15% 内。
+    体模里只有一个 9 mm 半径的空洞：恰好检出 1 个，质心偏差不超过 2 mm，面积在真值 ±12% 内。
     """
     report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40, 41, 118), silent=(77,), center_offset=-3.4))
     if not isinstance(report, dict):
@@ -214,8 +214,8 @@ def test_defect_area_and_center_match_phantom():
         cx, cy, area = float(defects[0]["x_mm"]), float(defects[0]["y_mm"]), float(defects[0]["area_mm2"])
     except (KeyError, TypeError, ValueError):
         return False
-    return (math.hypot(cx - 25.0, cy + 10.0) <= 3.0
-            and abs(area - truth_area) <= 0.15 * truth_area)
+    return (math.hypot(cx - 25.0, cy + 10.0) <= 2.0
+            and abs(area - truth_area) <= 0.12 * truth_area)
 
 
 def test_no_spurious_defect_outside_inspection_radius():
