@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "gate_tests": [
+    "test_outputs.py::test_invalid_scan_rejected_without_output"
+  ],
+  "tests": {
+    "test_outputs.py::test_roi_mu_matches_phantom_on_base_scan": {
+      "weight": 0.14285714285714285,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（roi mu matches phantom on base scan）"
+    },
+    "test_outputs.py::test_roi_mu_matches_second_phantom_geometry": {
+      "weight": 0.10989010989010989,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（roi mu matches second phantom geometry）"
+    },
+    "test_outputs.py::test_low_contrast_insert_resolved": {
+      "weight": 0.13186813186813187,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（low contrast insert resolved）"
+    },
+    "test_outputs.py::test_dark_current_large_offset_recovered": {
+      "weight": 0.0989010989010989,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（dark current large offset recovered）"
+    },
+    "test_outputs.py::test_dead_channel_recovery_with_unlisted_zero": {
+      "weight": 0.0989010989010989,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（dead channel recovery with unlisted zero）"
+    },
+    "test_outputs.py::test_defect_area_and_center_match_phantom": {
+      "weight": 0.12087912087912088,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（defect area and center match phantom）"
+    },
+    "test_outputs.py::test_no_spurious_defect_outside_inspection_radius": {
+      "weight": 0.06593406593406594,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（no spurious defect outside inspection radius）"
+    },
+    "test_outputs.py::test_repaired_channels_listed_exactly": {
+      "weight": 0.06593406593406594,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（repaired channels listed exactly）"
+    },
+    "test_outputs.py::test_report_schema_and_rounding": {
+      "weight": 0.06593406593406594,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（report schema and rounding）"
+    },
+    "test_outputs.py::test_rerun_produces_identical_bytes": {
+      "weight": 0.054945054945054944,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（rerun produces identical bytes）"
+    },
+    "test_outputs.py::test_failed_run_keeps_previous_report": {
+      "weight": 0.04395604395604395,
+      "rationale": "核心行为：多能谱反演、重建与采区/缺陷判定（failed run keeps previous report）"
+    }
+  }
+}
