@@ -58,6 +58,16 @@ def _line_integral(phantom, s, theta_deg):
     return total
 
 
+# 低对比度工况：夹杂只比基体高 2.4%，靠单能谱近似或漏做居中校正会把它抹平
+LOW_PHANTOM = [
+    {"x": 0.0, "y": 0.0, "r": 60.0, "mu": 0.50},
+    {"x": -18.0, "y": 12.0, "r": 26.0, "mu": 0.512},
+]
+LOW_ROIS = [
+    {"name": "matrix", "x_mm": 10.0, "y_mm": -30.0, "r_mm": 8.0},
+    {"name": "insert", "x_mm": -18.0, "y_mm": 12.0, "r_mm": 10.0},
+]
+
 def make_scan(phantom, rois, size=64, px=2.0, channels=81, pitch=2.0, n_angles=90,
               i0=20000.0, dark=50.0, bad=(), silent=(), drift=0.03, inspect_r=None,
               center_offset=0.0):
@@ -178,6 +188,27 @@ def test_dark_current_large_offset_recovered():
     assert abs(float(got["void"]) - 0.05) <= 0.005, "暗电流工况下空洞偏差过大"
 
 
+def test_low_contrast_insert_resolved():
+    """题面原文：「从多能谱计数恢复参考能量下的线积分……算各采区平均」。
+
+    夹杂只比基体高 2.4%（0.512 对 0.500）：夹杂的衰减系数要落在 0.8% 以内，
+    两区之差要保持在 0.009 以上；同时它远高于缺陷阈值，不得被报成缺陷。
+    """
+    report, _ = run_scan(make_scan(LOW_PHANTOM, LOW_ROIS, bad=(27,), silent=(52,)))
+    assert isinstance(report, dict), "没有产出报告"
+    got = _roi_values(report)
+    matrix = float(got["matrix"])
+    insert = float(got["insert"])
+    assert abs(insert - 0.512) <= 0.008 * 0.512, \
+        "低对比度夹杂偏差 %.4f 超容差" % (insert - 0.512)
+    assert abs(matrix - 0.500) <= 0.008 * 0.500, \
+        "低对比度基体偏差 %.4f 超容差" % (matrix - 0.500)
+    assert insert - matrix >= 0.009, \
+        "两区对比度被抹平：insert-matrix = %.4f（真值 0.012）" % (insert - matrix)
+    assert len(report["defects"]) == 0, \
+        "低对比度夹杂被误报成缺陷：%r" % (report["defects"],)
+
+
 def test_dead_channel_recovery_with_unlisted_zero():
     """题面原文：「自检也可能漏报，计数为 0 的道一律按失效道处理」。
 
@@ -202,7 +233,7 @@ def test_defect_area_and_center_match_phantom():
     assert len(defects) == 1, "检出缺陷数 %d，应为 1" % len(defects)
     d = defects[0]
     truth_area = math.pi * 81.0
-    assert math.hypot(float(d["x_mm"]) - 25.0, float(d["y_mm"]) + 10.0) <= 2.0, "缺陷质心偏差过大"
+    assert math.hypot(float(d["x_mm"]) - 25.0, float(d["y_mm"]) + 10.0) <= 1.5, "缺陷质心偏差过大"
     assert abs(float(d["area_mm2"]) - truth_area) <= 0.12 * truth_area, "缺陷面积偏差过大"
 
 
