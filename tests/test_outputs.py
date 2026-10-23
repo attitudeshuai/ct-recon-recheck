@@ -135,7 +135,7 @@ def _roi_values(report):
 
 # ---------------------------------------------------------------- 测试
 def test_roi_mu_matches_phantom_on_base_scan():
-    """题面原文：按 rois 里给的采区平均 µ 计算，mu_per_cm 保留三位小数。
+    """题面原文：「采区均值与缺陷面积分别按三位和一位小数给」
 
     基体与夹杂按相对 2% 卡，空洞按绝对 0.005 /cm 卡。
     """
@@ -154,7 +154,7 @@ def test_roi_mu_matches_phantom_on_base_scan():
 
 
 def test_roi_mu_matches_second_phantom_geometry():
-    """题面原文：「复检时程序会被喂别的批次，几何、材料、道数与角度都和前一批不同」。
+    """题面原文：「复检时换的批次连几何、材料、道数与角度都不一样」。
 
     换几何与材料后，三个采区仍要落在容差内。
     """
@@ -175,7 +175,7 @@ def test_roi_mu_matches_second_phantom_geometry():
 
 
 def test_dark_current_large_offset_recovered():
-    """题面原文：「计数按 I = I0(θ)·exp(-∫µ dl) + 暗电流 采集」。
+    """题面原文：「从计数恢复射线穿过样品的线积分」。
 
     暗电流抬到源强的百分之四后，采区仍要落在容差内。
     """
@@ -189,7 +189,7 @@ def test_dark_current_large_offset_recovered():
 
 
 def test_low_contrast_insert_resolved():
-    """题面原文：「从多能谱计数恢复参考能量下的线积分……算各采区平均」。
+    """题面原文：「均匀材料上的重建值应当等于该材料在参考能量下的线性衰减系数」。
 
     夹杂只比基体高 2.4%（0.512 对 0.500）：夹杂的衰减系数要落在 0.8% 以内，
     两区之差要保持在 0.009 以上；同时它远高于缺陷阈值，不得被报成缺陷。
@@ -210,7 +210,7 @@ def test_low_contrast_insert_resolved():
 
 
 def test_dead_channel_recovery_with_unlisted_zero():
-    """题面原文：「自检也可能漏报，计数为 0 的道一律按失效道处理」。
+    """题面原文：「计数为 0 的道一律按失效道处理」。
 
     自检清单为空而存在 4 个零计数道时，采区仍要合格。
     """
@@ -223,7 +223,7 @@ def test_dead_channel_recovery_with_unlisted_zero():
 
 
 def test_defect_area_and_center_match_phantom():
-    """题面原文：「缺陷按检视半径内的低衰减连通块报，面积用 mm²、质心用 mm、按面积降序」。
+    """题面原文：「是检视范围内 µ 低于」。
 
     只有一个 9 mm 半径的空洞：恰好检出 1 个，质心不超过 2 mm，面积在真值 ±12% 内。
     """
@@ -238,7 +238,7 @@ def test_defect_area_and_center_match_phantom():
 
 
 def test_no_spurious_defect_outside_inspection_radius():
-    """题面原文：「在 inspection.radius_mm 检视范围内找内部缺陷」。
+    """题面原文：「检视范围内找内部缺陷」。
 
     检视半径收到 52 mm（样品半径 60 mm）时，样品外的空气不得被报成缺陷。
     """
@@ -250,7 +250,7 @@ def test_no_spurious_defect_outside_inspection_radius():
 
 
 def test_repaired_channels_listed_exactly():
-    """题面原文：「repaired_channels 是本次判为失效并补过的道号，升序去重」。
+    """题面原文：「是本次判为失效并补过的道号，升序去重」。
 
     自检列了 12 与 40、另有一道 60 只有零计数：三者都要列出。
     """
@@ -262,7 +262,7 @@ def test_repaired_channels_listed_exactly():
 
 
 def test_invalid_scan_rejected_without_output():
-    """题面原文：「扫描文件不合法时以退出码 2 结束，不写报告，且不能污染上一次的报告」。
+    """题面原文：「并在 stderr 留一句人话，报告文件一个字都不写」。
 
     六种坏输入（含边界值）逐个验证：退出码 2、无报告、无临时文件、无日志/小结副作用、
     已有报告字节不变、stderr 非空。
@@ -309,7 +309,7 @@ def test_invalid_scan_rejected_without_output():
 
 
 def test_report_schema_and_rounding():
-    """题面原文：报告是一个 UTF-8 编码的 JSON 对象，结构固定；mu_per_cm 保留三位小数。
+    """题面原文：「结论写成一个 UTF-8 的 JSON 对象，字段与层次如下」
 
     校验顶层键、采区顺序、位数、meta 计数与 JSON 合法性。
     """
@@ -332,7 +332,7 @@ def test_report_schema_and_rounding():
 
 
 def test_rerun_produces_identical_bytes():
-    """题面原文：「同一份扫描重复运行，报告逐字节一致」。
+    """题面原文：「同一份扫描再跑一遍，结论文件要一个字节都不差」。
 
     连跑两次，两个报告文件字节完全相同。
     """
@@ -346,7 +346,7 @@ def test_rerun_produces_identical_bytes():
 
 
 def test_failed_run_keeps_previous_report():
-    """题面原文：「运行失败时不能覆盖上一次已经写好的报告」。
+    """题面原文：「这次跑失败，上一版报告要原封不动地留着」。
 
     先跑合格扫描留下报告，再用道数不匹配的坏输入跑：退出码 2，旧报告字节不变。
     """
@@ -369,7 +369,7 @@ def test_failed_run_keeps_previous_report():
 
 
 def test_zero_reference_energy_rejected():
-    """题面原文：「material_card.reference_energy_kev 要是正数」。
+    """题面原文：「取 0 或负数同样算参数越界」。
 
     把参考能量设成 0（正好卡在边界）：必须退出码 2 且不产出报告。
     """
