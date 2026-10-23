@@ -68,9 +68,16 @@ LOW_ROIS = [
     {"name": "insert", "x_mm": -18.0, "y_mm": 12.0, "r_mm": 10.0},
 ]
 
+def _scatter(a, x, i0a):
+    """每帧一层缓变的散射本底：按道号是二次多项式，幅度是源强的几个百分点。"""
+    amp = 0.02 * (1.0 + 0.6 * math.sin(2 * math.pi * a / 13.0)
+                  + 0.3 * math.cos(2 * math.pi * a / 29.0))
+    return i0a * amp * (0.6 + 0.35 * x + 0.45 * x * x)
+
+
 def make_scan(phantom, rois, size=64, px=2.0, channels=81, pitch=2.0, n_angles=90,
               i0=20000.0, dark=50.0, bad=(), silent=(), drift=0.03, inspect_r=None,
-              center_offset=0.0):
+              center_offset=0.0, air_skip=8):
     angles = [a * 180.0 / n_angles for a in range(n_angles)]
     s0 = -(channels - 1) / 2.0 * pitch
     per_angle, counts = [], []
@@ -81,13 +88,15 @@ def make_scan(phantom, rois, size=64, px=2.0, channels=81, pitch=2.0, n_angles=9
         row = []
         for k in range(channels):
             depth = _line_integral(phantom, s0 + k * pitch - center_offset, angles[a])
-            cnt = int(round(i0a * _transmission(depth) + dark))
+            x = (s0 + k * pitch) / (max(abs(s0), abs(s0 + (channels - 1) * pitch)))
+            cnt = int(round(i0a * _transmission(depth) + dark + _scatter(a, x, i0a)))
             if k in bad or k in silent:
                 cnt = 0
             row.append(cnt)
         counts.append(row)
     return {
-        "instrument": {"source_photons": i0, "dark_counts": dark},
+        "instrument": {"source_photons": i0, "dark_counts": dark,
+                       "air_skip_channels": air_skip},
         "geometry": {"image_size": size, "pixel_size_mm": px, "channels": channels,
                      "channel_pitch_mm": pitch, "angles_deg": angles},
         "projections": {"per_angle_source": per_angle, "counts": counts},

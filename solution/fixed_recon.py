@@ -110,7 +110,7 @@ def load_scan(path):
                 _fail("counts[%d][%d] 不是数值" % (r, c))
             if float(v) < 0:
                 _fail("counts[%d][%d] 为负" % (r, c))
-            if float(v) - dark > float(per_angle[r]) + 1.0:
+            if float(v) - dark > float(per_angle[r]) * 1.10 + 100.0:
                 _fail("counts[%d][%d] 扣掉暗电流后仍大于该角度源强（曝光异常）" % (r, c))
 
     r_insp = _get(insp, "radius_mm", float, "inspection")
@@ -169,6 +169,7 @@ def load_scan(path):
         "counts": [[float(v) for v in row] for row in counts],
         "inspect_r": r_insp, "thr": thr, "min_area": min_area,
         "rois": clean_rois, "bad": sorted(set(clean_bad)),
+        "air_skip": int(inst.get("air_skip_channels", 0)),
         "spectrum": spectrum, "ref_kev": ref_kev,
     }
 
@@ -205,14 +206,71 @@ def optical_depth(ts, ps, t):
 
 
 # ---------------------------------------------------------------- 投影 → 线积分
+def _solve_linear(a, b):
+    n = len(a)
+    m = [a[i][:] + [b[i]] for i in range(n)]
+    for col in range(n):
+        piv = max(range(col, n), key=lambda r: abs(m[r][col]))
+        if abs(m[piv][col]) < 1e-14:
+            return None
+        m[col], m[piv] = m[piv], m[col]
+        pv = m[col][col]
+        for k in range(col, n + 1):
+            m[col][k] /= pv
+        for r in range(n):
+            if r == col:
+                continue
+            fac = m[r][col]
+            if fac:
+                for k in range(col, n + 1):
+                    m[r][k] -= fac * m[col][k]
+    return [m[i][n] for i in range(n)]
+
+
+def _air_background(row, dark, air_skip, bad, i0):
+    """两端空气道只看得到「源强 + 散射本底」，据此拟二次多项式并返回逐道本底。"""
+    n_ch = len(row)
+    xs, ys = [], []
+    for k in list(range(air_skip)) + list(range(n_ch - air_skip, n_ch)):
+        if k in bad:
+            continue
+        v = row[k] - dark - i0
+        if v <= -0.5 * i0:
+            continue
+        xs.append(k - (n_ch - 1) / 2.0)
+        ys.append(v)
+    if len(xs) < 4:
+        return [0.0] * n_ch
+    xtx = [[0.0] * 3 for _ in range(3)]
+    xty = [0.0] * 3
+    for x, y in zip(xs, ys):
+        basis = [1.0, x, x * x]
+        for i in range(3):
+            xty[i] += basis[i] * y
+            for j in range(3):
+                xtx[i][j] += basis[i] * basis[j]
+    coef = _solve_linear(xtx, xty)
+    if coef is None:
+        return [0.0] * n_ch
+    out = []
+    for k in range(n_ch):
+        x = k - (n_ch - 1) / 2.0
+        out.append(max(0.0, coef[0] + coef[1] * x + coef[2] * x * x))
+    return out
+
+
 def to_line_integrals(scan):
-    """扣暗电流、按每角度源强归一，得到线积分；坏道（含自检漏报的零计数道）用两侧好道插值。"""
+    """先按空气道扣散射本底与暗电流，再按每角度源强归一；坏道用两侧好道插值。"""
     dark = scan["dark"]
     n_ch = scan["n_ch"]
+    air_skip = scan.get("air_skip", 0)
+    bad_set = set(scan["bad"])
     ps, ts = build_inverse(scan["spectrum"])
     p, repaired = [], set()
     for a, row in enumerate(scan["counts"]):
         i0 = scan["per_angle"][a]
+        bg = _air_background(row, dark, air_skip, bad_set, i0) if air_skip >= 2 else [0.0] * n_ch
+        row = [row[k] - bg[k] for k in range(n_ch)]
         line = []
         for k, cnt in enumerate(row):
             denom = cnt - dark

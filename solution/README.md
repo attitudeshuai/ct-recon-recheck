@@ -40,6 +40,14 @@
 
 对应测试：test_roi_mu_matches_phantom_on_base_scan、test_roi_mu_matches_second_phantom_geometry（单能假设的那一版实测只有 0.53）
 
+## 难点 6：散射本底要先按空气道扣掉
+
+推理轴：数据口径（散射与空气归一）
+
+落在推理路径上的哪里：每帧都叠着一层随道号缓变的散射本底，幅度是源强的几个百分点，按道号是二次多项式、逐帧系数不同。最外侧 air_skip_channels 个道完全在样品外，扣掉暗电流与源强之后的残差就是这层本底；先把它拟出来、从整帧减掉，再做归一与反解。不减这一层，本底会被当成衰减吃进线积分，采区读数整体偏低几个百分点，低对比夹杂与空洞判定一起塌。空气道里混着失效道时要跳过这些道再拟合。
+
+对应测试：test_low_contrast_insert_resolved、test_roi_mu_matches_phantom_on_base_scan、test_defect_area_and_center_match_phantom
+
 ## 跨运行状态（状态迁移与不污染）
 
 同一份扫描重复运行，报告要逐字节一致，复核才能复现；运行失败时不能覆盖上一次的报告。做法是先写临时文件再原子替换，非法输入以退出码 2 收场且不落文件。对应测试：test_rerun_produces_identical_bytes、test_failed_run_keeps_previous_report。

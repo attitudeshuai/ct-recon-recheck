@@ -10,6 +10,13 @@ SPECTRUM = [(70.0, 0.60, 1.00), (90.0, 0.30, 0.71), (110.0, 0.10, 0.55)]
 REF_ENERGY = 70.0
 
 
+def scatter(a, x, i0a):
+    """每帧一层缓变的散射本底：按道号是二次多项式，幅度是源强的几个百分点。"""
+    amp = 0.02 * (1.0 + 0.6 * math.sin(2 * math.pi * a / 13.0)
+                  + 0.3 * math.cos(2 * math.pi * a / 29.0))
+    return i0a * amp * (0.6 + 0.35 * x + 0.45 * x * x)
+
+
 def transmission(p):
     return sum(w * math.exp(-f * p) for _kev, w, f in SPECTRUM)
 
@@ -46,7 +53,7 @@ def source_drift(index, amplitude=0.03, secondary=0.015):
 def make_scan(phantom=None, size=64, px=2.0, channels=81, pitch=2.0, n_angles=90,
               i0=20000.0, dark=50.0, bad_channels=(27, 28, 79), silent_dead=(52,),
               drift_amp=0.03, drift_2=0.015, rois=None, inspect_r=None, thr=0.20,
-              min_area=30.0, matrix_mu=None, center_offset_mm=0.0):
+              min_area=30.0, matrix_mu=None, center_offset_mm=0.0, air_skip=8):
     phantom = phantom or DEFAULT_PHANTOM
     if inspect_r is None:
         inspect_r = phantom[0]["r"] - 2.0
@@ -60,7 +67,8 @@ def make_scan(phantom=None, size=64, px=2.0, channels=81, pitch=2.0, n_angles=90
         for k in range(channels):
             s = s0 + k * pitch
             p = line_integral(phantom, s - center_offset_mm, angles[a])
-            cnt = int(round(i0a * transmission(p) + dark))
+            x = (s0 + k * pitch) / (max(abs(s0), abs(s0 + (channels - 1) * pitch)))
+            cnt = int(round(i0a * transmission(p) + dark + scatter(a, x, i0a)))
             if k in bad_channels or k in silent_dead:
                 cnt = 0
             row.append(cnt)
@@ -71,7 +79,8 @@ def make_scan(phantom=None, size=64, px=2.0, channels=81, pitch=2.0, n_angles=90
         {"name": "void", "x_mm": 25.0, "y_mm": -10.0, "r_mm": 3.0},
     ]
     return {
-        "instrument": {"source_photons": i0, "dark_counts": dark},
+        "instrument": {"source_photons": i0, "dark_counts": dark,
+                   "air_skip_channels": air_skip},
         "geometry": {
             "image_size": size, "pixel_size_mm": px, "channels": channels,
             "channel_pitch_mm": pitch, "angles_deg": angles,
