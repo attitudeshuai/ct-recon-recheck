@@ -135,6 +135,8 @@ def load_scan(path):
         clean_rois.append({"name": name, "x_mm": cx, "y_mm": cy, "r_mm": rr})
 
     card = _get(raw, "material_card", dict, "scan")
+    if len(angles) == 0:
+        _fail("geometry.angles_deg 是空的")
     spectrum_raw = _get(card, "spectrum", list, "material_card")
     if len(spectrum_raw) < 2:
         _fail("material_card.spectrum 至少要两个能量点")
