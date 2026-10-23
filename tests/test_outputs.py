@@ -132,14 +132,15 @@ def test_roi_mu_matches_phantom_on_base_scan():
     report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(27, 28, 79), silent=(52,)))
     assert isinstance(report, dict), "没有产出报告"
     got = _roi_values(report)
-    for roi in BASE_ROIS:
-        assert roi["name"] in got, "报告缺采区 %s" % roi["name"]
-        v = float(got[roi["name"]])
-        if "abs" in roi:
-            assert abs(v - roi["mu"]) <= roi["abs"], "采区 %s 偏差 %.4f 超过绝对容差" % (roi["name"], v - roi["mu"])
-        else:
-            assert abs(v - roi["mu"]) <= roi["tol"] * roi["mu"], "采区 %s 偏差 %.2f%% 超容差" % (
-                roi["name"], (v - roi["mu"]) / roi["mu"] * 100)
+    assert "matrix" in got, "报告缺采区 matrix"
+    assert "insert" in got, "报告缺采区 insert"
+    assert "void" in got, "报告缺采区 void"
+    matrix = float(got["matrix"])
+    insert = float(got["insert"])
+    void = float(got["void"])
+    assert abs(matrix - 0.50) <= 0.02 * 0.50, "基体偏差 %.2f%% 超容差" % ((matrix - 0.50) / 0.50 * 100)
+    assert abs(insert - 0.62) <= 0.02 * 0.62, "夹杂偏差 %.2f%% 超容差" % ((insert - 0.62) / 0.62 * 100)
+    assert abs(void - 0.05) <= 0.012, "空洞偏差 %.4f 超过绝对容差" % (void - 0.05)
 
 
 def test_roi_mu_matches_second_phantom_geometry():
@@ -152,14 +153,15 @@ def test_roi_mu_matches_second_phantom_geometry():
                                    silent=(30,), center_offset=2.6))
     assert isinstance(report, dict), "没有产出报告"
     got = _roi_values(report)
-    for roi in SECOND_ROIS:
-        assert roi["name"] in got, "报告缺采区 %s" % roi["name"]
-        v = float(got[roi["name"]])
-        if "abs" in roi:
-            assert abs(v - roi["mu"]) <= roi["abs"], "采区 %s 偏差 %.4f" % (roi["name"], v - roi["mu"])
-        else:
-            assert abs(v - roi["mu"]) <= roi["tol"] * roi["mu"], "采区 %s 偏差 %.2f%%" % (
-                roi["name"], (v - roi["mu"]) / roi["mu"] * 100)
+    assert "matrix" in got, "报告缺采区 matrix"
+    assert "insert" in got, "报告缺采区 insert"
+    assert "void" in got, "报告缺采区 void"
+    matrix = float(got["matrix"])
+    insert = float(got["insert"])
+    void = float(got["void"])
+    assert abs(matrix - 0.44) <= 0.02 * 0.44, "第二批基体偏差 %.2f%%" % ((matrix - 0.44) / 0.44 * 100)
+    assert abs(insert - 0.60) <= 0.02 * 0.60, "第二批夹杂偏差 %.2f%%" % ((insert - 0.60) / 0.60 * 100)
+    assert abs(void - 0.15) <= 0.012, "第二批空洞偏差 %.4f" % (void - 0.15)
 
 
 def test_dark_current_large_offset_recovered():
