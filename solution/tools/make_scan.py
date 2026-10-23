@@ -43,8 +43,8 @@ def source_drift(index, amplitude=0.03, secondary=0.015):
     return 1.0 + amplitude * math.sin(2 * math.pi * index / 37.0) + secondary * math.cos(2 * math.pi * index / 11.0)
 
 
-def make_scan(phantom=None, size=80, px=2.0, channels=121, pitch=2.0, n_angles=180,
-              i0=20000.0, dark=50.0, bad_channels=(40, 41, 118), silent_dead=(77,),
+def make_scan(phantom=None, size=64, px=2.0, channels=81, pitch=2.0, n_angles=90,
+              i0=20000.0, dark=50.0, bad_channels=(27, 28, 79), silent_dead=(52,),
               drift_amp=0.03, drift_2=0.015, rois=None, inspect_r=None, thr=0.20,
               min_area=30.0, matrix_mu=None, center_offset_mm=0.0):
     phantom = phantom or DEFAULT_PHANTOM

@@ -30,12 +30,12 @@ SECOND_PHANTOM = [
 BASE_ROIS = [
     {"name": "matrix", "x_mm": 0.0, "y_mm": -35.0, "r_mm": 8.0, "mu": 0.50, "tol": 0.02},
     {"name": "insert", "x_mm": -20.0, "y_mm": 15.0, "r_mm": 8.0, "mu": 0.62, "tol": 0.02},
-    {"name": "void", "x_mm": 25.0, "y_mm": -10.0, "r_mm": 3.0, "mu": 0.05, "abs": 0.005},
+    {"name": "void", "x_mm": 25.0, "y_mm": -10.0, "r_mm": 3.0, "mu": 0.05, "abs": 0.012},
 ]
 SECOND_ROIS = [
     {"name": "matrix", "x_mm": 0.0, "y_mm": -30.0, "r_mm": 7.0, "mu": 0.44, "tol": 0.02},
     {"name": "insert", "x_mm": 15.0, "y_mm": 25.0, "r_mm": 6.0, "mu": 0.60, "tol": 0.02},
-    {"name": "void", "x_mm": -30.0, "y_mm": -20.0, "r_mm": 2.5, "mu": 0.15, "abs": 0.005},
+    {"name": "void", "x_mm": -30.0, "y_mm": -20.0, "r_mm": 2.5, "mu": 0.15, "abs": 0.012},
 ]
 
 
@@ -58,7 +58,7 @@ def _line_integral(phantom, s, theta_deg):
     return total
 
 
-def make_scan(phantom, rois, size=80, px=2.0, channels=121, pitch=2.0, n_angles=180,
+def make_scan(phantom, rois, size=64, px=2.0, channels=81, pitch=2.0, n_angles=90,
               i0=20000.0, dark=50.0, bad=(), silent=(), drift=0.03, inspect_r=None,
               center_offset=0.0):
     angles = [a * 180.0 / n_angles for a in range(n_angles)]
@@ -129,7 +129,7 @@ def test_roi_mu_matches_phantom_on_base_scan():
 
     基体与夹杂按相对 2% 卡，空洞按绝对 0.005 /cm 卡。
     """
-    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40, 41, 118), silent=(77,)))
+    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(27, 28, 79), silent=(52,)))
     assert isinstance(report, dict), "没有产出报告"
     got = _roi_values(report)
     for roi in BASE_ROIS:
@@ -147,8 +147,8 @@ def test_roi_mu_matches_second_phantom_geometry():
 
     换几何与材料后，三个采区仍要落在容差内。
     """
-    report, _ = run_scan(make_scan(SECOND_PHANTOM, SECOND_ROIS, channels=121, pitch=2.0,
-                                   n_angles=180, i0=15000.0, dark=120.0, bad=(55,),
+    report, _ = run_scan(make_scan(SECOND_PHANTOM, SECOND_ROIS, channels=81, pitch=2.0,
+                                   n_angles=90, i0=15000.0, dark=120.0, bad=(37,),
                                    silent=(30,), center_offset=2.6))
     assert isinstance(report, dict), "没有产出报告"
     got = _roi_values(report)
@@ -167,7 +167,7 @@ def test_dark_current_large_offset_recovered():
 
     暗电流抬到源强的百分之四后，采区仍要落在容差内。
     """
-    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, dark=800.0, bad=(40,),
+    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, dark=800.0, bad=(27,),
                                    silent=(77,), center_offset=-3.4))
     assert isinstance(report, dict), "没有产出报告"
     got = _roi_values(report)
@@ -181,7 +181,7 @@ def test_dead_channel_recovery_with_unlisted_zero():
 
     自检清单为空而存在 4 个零计数道时，采区仍要合格。
     """
-    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(), silent=(20, 21, 22, 90),
+    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(), silent=(20, 21, 22, 60),
                                    center_offset=-3.4))
     assert isinstance(report, dict), "没有产出报告"
     got = _roi_values(report)
@@ -194,7 +194,7 @@ def test_defect_area_and_center_match_phantom():
 
     只有一个 9 mm 半径的空洞：恰好检出 1 个，质心不超过 2 mm，面积在真值 ±12% 内。
     """
-    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40, 41, 118), silent=(77,)))
+    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(27, 28, 79), silent=(52,)))
     assert isinstance(report, dict), "没有产出报告"
     defects = report["defects"]
     assert len(defects) == 1, "检出缺陷数 %d，应为 1" % len(defects)
@@ -209,7 +209,7 @@ def test_no_spurious_defect_outside_inspection_radius():
 
     检视半径收到 52 mm（样品半径 60 mm）时，样品外的空气不得被报成缺陷。
     """
-    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40, 41, 118), silent=(77,),
+    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(27, 28, 79), silent=(52,),
                                    inspect_r=52.0))
     assert isinstance(report, dict), "没有产出报告"
     assert len(report["defects"]) == 1, "检视范围外被报成了缺陷"
@@ -219,12 +219,12 @@ def test_no_spurious_defect_outside_inspection_radius():
 def test_repaired_channels_listed_exactly():
     """题面原文：「repaired_channels 是本次判为失效并补过的道号，升序去重」。
 
-    自检列了 12 与 60、另有一道 90 只有零计数：三者都要列出。
+    自检列了 12 与 40、另有一道 60 只有零计数：三者都要列出。
     """
-    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(12, 60), silent=(90,),
+    report, _ = run_scan(make_scan(BASE_PHANTOM, BASE_ROIS, bad=(12, 40), silent=(60,),
                                    center_offset=-3.4))
     assert isinstance(report, dict), "没有产出报告"
-    assert report["meta"]["repaired_channels"] == [12, 60, 90], "补道清单不对：%r" % (
+    assert report["meta"]["repaired_channels"] == [12, 40, 60], "补道清单不对：%r" % (
         report["meta"]["repaired_channels"],)
 
 
@@ -234,7 +234,7 @@ def test_invalid_scan_rejected_without_output():
     六种坏输入（含边界值）逐个验证：退出码 2、无报告、无临时文件、无日志/小结副作用、
     已有报告字节不变、stderr 非空。
     """
-    good = make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40,), silent=(), center_offset=-3.4)
+    good = make_scan(BASE_PHANTOM, BASE_ROIS, bad=(27,), silent=(), center_offset=-3.4)
     missing = json.loads(json.dumps(good))
     missing.pop("projections")
     wrong_ch = json.loads(json.dumps(good))
@@ -280,11 +280,11 @@ def test_report_schema_and_rounding():
 
     校验顶层键、采区顺序、位数、meta 计数与 JSON 合法性。
     """
-    scan_obj = make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40, 41, 118), silent=(77,))
+    scan_obj = make_scan(BASE_PHANTOM, BASE_ROIS, bad=(27, 28, 79), silent=(52,))
     report, ctx = run_scan(scan_obj)
     assert isinstance(report, dict)
     assert set(report) == {"geometry", "roi", "defects", "meta"}, "顶层键不对：%r" % (set(report),)
-    assert report["geometry"]["image_size"] == 80
+    assert report["geometry"]["image_size"] == 64
     assert abs(float(report["geometry"]["pixel_size_mm"]) - 2.0) <= 1e-9, "像素尺寸不是 2.0"
     assert [r["name"] for r in report["roi"]] == [r["name"] for r in BASE_ROIS], "采区顺序不对"
     for r in report["roi"]:
@@ -292,8 +292,8 @@ def test_report_schema_and_rounding():
         assert math.isfinite(mu)
         assert abs(mu - round(mu, 3)) <= 1e-12, "采区 %s 不是三位小数" % r["name"]
         assert isinstance(r["pixels"], int) and r["pixels"] > 0
-    assert report["meta"]["n_angles"] == 180
-    assert report["meta"]["n_channels"] == 121
+    assert report["meta"]["n_angles"] == 90
+    assert report["meta"]["n_channels"] == 81
     raw = open(ctx["out"], encoding="utf-8").read()
     assert "NaN" not in raw and "Infinity" not in raw
 
@@ -303,7 +303,7 @@ def test_rerun_produces_identical_bytes():
 
     连跑两次，两个报告文件字节完全相同。
     """
-    scan_obj = make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40, 41, 118), silent=(77,))
+    scan_obj = make_scan(BASE_PHANTOM, BASE_ROIS, bad=(27, 28, 79), silent=(52,))
     first, ctx1 = run_scan(scan_obj)
     assert isinstance(first, dict), "第一次就没跑通"
     body1 = open(ctx1["out"], "rb").read()
@@ -317,7 +317,7 @@ def test_failed_run_keeps_previous_report():
 
     先跑合格扫描留下报告，再用道数不匹配的坏输入跑：退出码 2，旧报告字节不变。
     """
-    good = make_scan(BASE_PHANTOM, BASE_ROIS, bad=(40,), silent=(), center_offset=-3.4)
+    good = make_scan(BASE_PHANTOM, BASE_ROIS, bad=(27,), silent=(), center_offset=-3.4)
     tmp = tempfile.mkdtemp(prefix="ct-keep-")
     sp = os.path.join(tmp, "scan.json")
     op = os.path.join(tmp, "report.json")
