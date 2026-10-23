@@ -269,7 +269,7 @@ def to_line_integrals(scan):
     p, repaired = [], set()
     for a, row in enumerate(scan["counts"]):
         i0 = scan["per_angle"][a]
-        bg = _air_background(row, dark, air_skip, bad_set, i0) if air_skip >= 2 else [0.0] * n_ch
+        bg = _air_background(row, dark, air_skip, bad_set, i0) if air_skip > 1 else [0.0] * n_ch
         row = [row[k] - bg[k] for k in range(n_ch)]
         line = []
         for k, cnt in enumerate(row):
