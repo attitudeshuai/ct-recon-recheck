@@ -138,8 +138,8 @@ def test_roi_mu_matches_phantom_on_base_scan():
     matrix = float(got["matrix"])
     insert = float(got["insert"])
     void = float(got["void"])
-    assert abs(matrix - 0.50) <= 0.02 * 0.50, "基体偏差 %.2f%% 超容差" % ((matrix - 0.50) / 0.50 * 100)
-    assert abs(insert - 0.62) <= 0.02 * 0.62, "夹杂偏差 %.2f%% 超容差" % ((insert - 0.62) / 0.62 * 100)
+    assert abs(matrix - 0.50) <= 0.012 * 0.50, "基体偏差 %.2f%% 超容差" % ((matrix - 0.50) / 0.50 * 100)
+    assert abs(insert - 0.62) <= 0.012 * 0.62, "夹杂偏差 %.2f%% 超容差" % ((insert - 0.62) / 0.62 * 100)
     assert abs(void - 0.05) <= 0.012, "空洞偏差 %.4f 超过绝对容差" % (void - 0.05)
 
 
@@ -159,8 +159,8 @@ def test_roi_mu_matches_second_phantom_geometry():
     matrix = float(got["matrix"])
     insert = float(got["insert"])
     void = float(got["void"])
-    assert abs(matrix - 0.44) <= 0.02 * 0.44, "第二批基体偏差 %.2f%%" % ((matrix - 0.44) / 0.44 * 100)
-    assert abs(insert - 0.60) <= 0.02 * 0.60, "第二批夹杂偏差 %.2f%%" % ((insert - 0.60) / 0.60 * 100)
+    assert abs(matrix - 0.44) <= 0.012 * 0.44, "第二批基体偏差 %.2f%%" % ((matrix - 0.44) / 0.44 * 100)
+    assert abs(insert - 0.60) <= 0.012 * 0.60, "第二批夹杂偏差 %.2f%%" % ((insert - 0.60) / 0.60 * 100)
     assert abs(void - 0.15) <= 0.012, "第二批空洞偏差 %.4f" % (void - 0.15)
 
 
@@ -173,8 +173,8 @@ def test_dark_current_large_offset_recovered():
                                    silent=(77,), center_offset=-3.4))
     assert isinstance(report, dict), "没有产出报告"
     got = _roi_values(report)
-    assert abs(float(got["matrix"]) - 0.50) <= 0.02 * 0.50, "暗电流工况下基体偏差过大"
-    assert abs(float(got["insert"]) - 0.62) <= 0.02 * 0.62, "暗电流工况下夹杂偏差过大"
+    assert abs(float(got["matrix"]) - 0.50) <= 0.012 * 0.50, "暗电流工况下基体偏差过大"
+    assert abs(float(got["insert"]) - 0.62) <= 0.012 * 0.62, "暗电流工况下夹杂偏差过大"
     assert abs(float(got["void"]) - 0.05) <= 0.005, "暗电流工况下空洞偏差过大"
 
 
@@ -187,8 +187,8 @@ def test_dead_channel_recovery_with_unlisted_zero():
                                    center_offset=-3.4))
     assert isinstance(report, dict), "没有产出报告"
     got = _roi_values(report)
-    assert abs(float(got["matrix"]) - 0.50) <= 0.02 * 0.50
-    assert abs(float(got["insert"]) - 0.62) <= 0.02 * 0.62
+    assert abs(float(got["matrix"]) - 0.50) <= 0.012 * 0.50
+    assert abs(float(got["insert"]) - 0.62) <= 0.012 * 0.62
 
 
 def test_defect_area_and_center_match_phantom():
