@@ -69,7 +69,7 @@ def load_scan(path):
     angles = _get(geo, "angles_deg", list, "geometry")
     if size < 4:
         _fail("geometry.image_size 太小")
-    if px <= 0 or pitch <= 0:
+    if not (px > 0) or not (pitch > 0):
         _fail("geometry 的像素尺寸与道间距必须为正")
     if len(angles) < 3:
         _fail("geometry.angles_deg 少于 3 个角度")
@@ -83,11 +83,11 @@ def load_scan(path):
 
     i0 = _get(inst, "source_photons", float, "instrument")
     dark = _get(inst, "dark_counts", float, "instrument")
-    if i0 <= 0:
+    if not (i0 > 0):
         _fail("instrument.source_photons 必须为正")
     if dark < 0:
         _fail("instrument.dark_counts 不能为负")
-    if i0 <= dark:
+    if not (i0 > dark):
         _fail("instrument.source_photons 不大于 dark_counts")
 
     per_angle = _get(proj, "per_angle_source", list, "projections")
@@ -100,7 +100,7 @@ def load_scan(path):
     for i, v in enumerate(per_angle):
         if not isinstance(v, (int, float)) or isinstance(v, bool):
             _fail("per_angle_source[%d] 不是数值" % i)
-        if float(v) <= dark:
+        if not (float(v) > dark):
             _fail("per_angle_source[%d] 不大于暗电流" % i)
     for r, row in enumerate(counts):
         if not isinstance(row, list) or len(row) != n_ch:
@@ -116,7 +116,7 @@ def load_scan(path):
     r_insp = _get(insp, "radius_mm", float, "inspection")
     thr = _get(insp, "defect_mu_threshold_per_cm", float, "inspection")
     min_area = _get(insp, "min_defect_area_mm2", float, "inspection")
-    if r_insp <= 0 or min_area < 0:
+    if not (r_insp > 0) or min_area < 0:
         _fail("inspection 的检视半径必须为正、最小缺陷面积不能为负")
 
     rois = _get(raw, "rois", list, "scan")
@@ -130,7 +130,7 @@ def load_scan(path):
         cx = _get(r, "x_mm", float, "rois[%d]" % i)
         cy = _get(r, "y_mm", float, "rois[%d]" % i)
         rr = _get(r, "r_mm", float, "rois[%d]" % i)
-        if rr <= 0:
+        if not (rr > 0):
             _fail("rois[%d].r_mm 必须为正" % i)
         clean_rois.append({"name": name, "x_mm": cx, "y_mm": cy, "r_mm": rr})
 
@@ -145,7 +145,7 @@ def load_scan(path):
         kev = _get(item, "kev", float, "spectrum[%d]" % i)
         weight = _get(item, "weight", float, "spectrum[%d]" % i)
         rel = _get(item, "mu_relative", float, "spectrum[%d]" % i)
-        if kev <= 0 or weight <= 0 or rel <= 0:
+        if not (kev > 0) or not (weight > 0) or not (rel > 0):
             _fail("material_card.spectrum[%d] 的 kev/weight/mu_relative 都要为正" % i)
         spectrum.append((kev, weight, rel))
     if abs(sum(w for _k, w, _f in spectrum) - 1.0) > 0.05:
@@ -158,7 +158,7 @@ def load_scan(path):
     bad = detector.get("bad_channels") or []
     clean_bad = []
     for c in bad:
-        if not isinstance(c, int) or isinstance(c, bool) or c < 0 or c >= n_ch:
+        if not isinstance(c, int) or isinstance(c, bool) or c < 0 or not (c < n_ch):
             _fail("detector.bad_channels 里有越界道号")
         clean_bad.append(c)
 
@@ -187,7 +187,7 @@ def build_inverse(spectrum, p_max=40.0, n=20001):
 
 def optical_depth(ts, ps, t):
     """由透射率反解 70 keV 线积分：单能假设下这是一条过原点的直线，多能谱下是条曲线。"""
-    if t >= ts[0]:
+    if not (t < ts[0]):
         return 0.0
     if t <= ts[-1]:
         return ps[-1]
@@ -199,7 +199,7 @@ def optical_depth(ts, ps, t):
         else:
             hi = mid
     t0, t1 = ts[lo], ts[hi]
-    if t0 == t1:
+    if not (t1 > t0):
         return ps[lo]
     return ps[lo] + (t0 - t) / (t0 - t1) * (ps[hi] - ps[lo])
 
@@ -231,15 +231,15 @@ def to_line_integrals(scan):
             if p[a][k] is not None:
                 continue
             lo, hi = k - 1, k + 1
-            while lo >= 0 and p[a][lo] is None:
+            while not (lo < 0) and p[a][lo] is None:
                 lo -= 1
             while hi < n_ch and p[a][hi] is None:
                 hi += 1
-            if lo < 0 and hi >= n_ch:
+            if lo < 0 and not (hi < n_ch):
                 p[a][k] = 0.0
             elif lo < 0:
                 p[a][k] = p[a][hi]
-            elif hi >= n_ch:
+            elif not (hi < n_ch):
                 p[a][k] = p[a][lo]
             else:
                 w = (k - lo) / float(hi - lo)
@@ -306,7 +306,7 @@ def reconstruct(p, scan, axis_offset=0.0):
                 x = (ix - (size - 1) / 2.0) * px
                 t = (x * c + base + axis_offset) / ds
                 k0 = int(math.floor(t))
-                if k0 < 0 or k0 >= n_ch - 1:
+                if k0 < 0 or not (k0 < n_ch - 1):
                     continue
                 f = t - k0
                 img[iy][ix] += weight * ((1.0 - f) * q[k0] + f * q[k0 + 1])
@@ -349,7 +349,7 @@ def defect_report(img_cm, scan):
     out = []
     for iy in range(size):
         for ix in range(size):
-            if seen[iy][ix] or not inside(ix, iy) or img_cm[iy][ix] >= thr:
+            if seen[iy][ix] or not inside(ix, iy) or not (img_cm[iy][ix] < thr):
                 continue
             stack, comp = [(ix, iy)], []
             seen[iy][ix] = True

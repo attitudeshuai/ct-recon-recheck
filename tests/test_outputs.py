@@ -366,3 +366,20 @@ def test_failed_run_keeps_previous_report():
     second = _run(sp, op)
     assert second.returncode == 2
     assert open(op, "rb").read() == before, "失败的那次覆盖了旧报告"
+
+
+def test_zero_reference_energy_rejected():
+    """题面原文：「material_card.reference_energy_kev 要是正数」。
+
+    把参考能量设成 0（正好卡在边界）：必须退出码 2 且不产出报告。
+    """
+    data = make_scan(BASE_PHANTOM, BASE_ROIS, bad=(27,), silent=(52,))
+    data["material_card"]["reference_energy_kev"] = 0.0
+    tmp = tempfile.mkdtemp(prefix="ct-ref0-")
+    spath = os.path.join(tmp, "scan.json")
+    opath = os.path.join(tmp, "report.json")
+    with open(spath, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+    proc = _run(spath, opath)
+    assert proc.returncode == 2, "参考能量为 0 时退出码应为 2，实际 %r" % proc.returncode
+    assert not os.path.exists(opath), "参考能量为 0 时不该产出报告"
